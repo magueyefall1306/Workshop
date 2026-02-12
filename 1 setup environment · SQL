@@ -1,0 +1,55 @@
+-- =====================================================
+-- PHASE 1 - ÉTAPE 1 : Configuration de l'environnement
+-- =====================================================
+
+-- 1. Créer la base de données principale
+CREATE DATABASE IF NOT EXISTS ANYCOMPANY_LAB;
+
+USE DATABASE ANYCOMPANY_LAB;
+
+-- 2. Créer les schémas pour l'architecture médaillons (Bronze, Silver, Analytics)
+CREATE SCHEMA IF NOT EXISTS BRONZE
+    COMMENT = 'Schéma pour les données brutes (raw data)';
+
+CREATE SCHEMA IF NOT EXISTS SILVER
+    COMMENT = 'Schéma pour les données nettoyées et transformées';
+
+CREATE SCHEMA IF NOT EXISTS ANALYTICS
+    COMMENT = 'Schéma pour les tables analytiques et data products';
+
+-- 3. Créer un file format pour les fichiers CSV
+CREATE OR REPLACE FILE FORMAT BRONZE.CSV_FORMAT
+    TYPE = 'CSV'
+    FIELD_DELIMITER = ','
+    SKIP_HEADER = 1
+    FIELD_OPTIONALLY_ENCLOSED_BY = '"'
+    NULL_IF = ('NULL', 'null', '')
+    EMPTY_FIELD_AS_NULL = TRUE
+    COMPRESSION = 'AUTO'
+    COMMENT = 'Format pour fichiers CSV avec header';
+
+-- 4. Créer un file format pour les fichiers JSON
+CREATE OR REPLACE FILE FORMAT BRONZE.JSON_FORMAT
+    TYPE = 'JSON'
+    STRIP_OUTER_ARRAY = TRUE
+    COMPRESSION = 'AUTO'
+    COMMENT = 'Format pour fichiers JSON avec array';
+
+--5.Créer un stage externe pointant vers S3
+CREATE OR REPLACE STAGE BRONZE.S3_STAGE
+    URL = 's3://logbrain-datalake/datasets/food-beverage/'
+    FILE_FORMAT = BRONZE.CSV_FORMAT
+    COMMENT = 'Stage externe S3 pour charger les données AnyCompany';
+
+-- 6. Vérifier que le stage est bien créé et lister les fichiers disponibles
+LIST @BRONZE.S3_STAGE;
+
+-- 7. Créer un warehouse pour les opérations (si nécessaire)
+CREATE WAREHOUSE IF NOT EXISTS ANYCOMPANY_WH
+    WAREHOUSE_SIZE = 'X-SMALL'
+    AUTO_SUSPEND = 60
+    AUTO_RESUME = TRUE
+    INITIALLY_SUSPENDED = TRUE
+    COMMENT = 'Warehouse pour le projet AnyCompany - Auto-suspend après 1 minute';
+
+USE WAREHOUSE ANYCOMPANY_WH;

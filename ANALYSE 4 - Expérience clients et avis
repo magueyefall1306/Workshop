@@ -1,0 +1,88 @@
+-- =====================================================
+-- PHASE 2 - ANALYSE 4 : Expérience client et avis produits
+-- =====================================================
+-- Description: Analyse de la satisfaction client et impact sur les ventes
+
+USE DATABASE ANYCOMPANY_LAB;
+USE SCHEMA SILVER;
+
+-- ==========================================
+-- 1. VUE D'ENSEMBLE DES AVIS PRODUITS
+-- ==========================================
+
+-- Statistiques globales des avis
+SELECT 
+    COUNT(DISTINCT review_id) AS total_reviews,
+    COUNT(DISTINCT product_id) AS products_reviewed,
+    COUNT(DISTINCT product_category) AS categories_reviewed,
+    ROUND(AVG(rating), 2) AS avg_rating,
+    SUM(CASE WHEN rating >= 4 THEN 1 ELSE 0 END) AS positive_reviews,
+    SUM(CASE WHEN rating <= 2 THEN 1 ELSE 0 END) AS negative_reviews,
+    ROUND(SUM(CASE WHEN rating >= 4 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS positive_rate_pct
+FROM product_reviews_clean;
+
+
+-- ==========================================
+-- 2. INTERACTIONS SERVICE CLIENT
+-- ==========================================
+
+-- Vue d'ensemble du service client
+SELECT 
+    COUNT(DISTINCT interaction_id) AS total_interactions,
+    ROUND(AVG(duration_minutes), 1) AS avg_duration_min,
+    ROUND(AVG(customer_satisfaction), 2) AS avg_satisfaction,
+    SUM(CASE WHEN resolution_status = 'Resolved' THEN 1 ELSE 0 END) AS resolved_count,
+    ROUND(SUM(CASE WHEN resolution_status = 'Resolved' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS resolution_rate_pct
+FROM customer_service_interactions_clean;
+
+-- Performance par type d'interaction
+SELECT 
+    interaction_type,
+    COUNT(*) AS interaction_count,
+    ROUND(AVG(duration_minutes), 1) AS avg_duration,
+    ROUND(AVG(customer_satisfaction), 2) AS avg_satisfaction,
+    SUM(CASE WHEN resolution_status = 'Resolved' THEN 1 ELSE 0 END) AS resolved,
+    ROUND(SUM(CASE WHEN resolution_status = 'Resolved' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS resolution_rate_pct
+FROM customer_service_interactions_clean
+GROUP BY interaction_type
+ORDER BY interaction_count DESC;
+
+-- Performance par catégorie de problème
+SELECT 
+    issue_category,
+    COUNT(*) AS case_count,
+    ROUND(AVG(duration_minutes), 1) AS avg_duration,
+    ROUND(AVG(customer_satisfaction), 2) AS avg_satisfaction,
+    SUM(CASE WHEN follow_up_required = 'YES' THEN 1 ELSE 0 END) AS follow_ups_needed,
+    ROUND(SUM(CASE WHEN resolution_status = 'Resolved' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS resolution_rate_pct
+FROM customer_service_interactions_clean
+GROUP BY issue_category
+ORDER BY case_count DESC;
+
+-- ==========================================
+-- 3. SATISFACTION CLIENT PAR STATUT DE RÉSOLUTION
+-- ==========================================
+
+SELECT 
+    resolution_status,
+    COUNT(*) AS interaction_count,
+    ROUND(AVG(customer_satisfaction), 2) AS avg_satisfaction,
+    ROUND(AVG(duration_minutes), 1) AS avg_duration
+FROM customer_service_interactions_clean
+GROUP BY resolution_status
+ORDER BY avg_satisfaction DESC;
+
+-- ==========================================
+-- 4. TENDANCES TEMPORELLES SERVICE CLIENT
+-- ==========================================
+
+-- Évolution trimestrielle
+SELECT 
+    DATE_TRUNC('quarter', interaction_date) AS quarter,
+    COUNT(*) AS interaction_count,
+    ROUND(AVG(customer_satisfaction), 2) AS avg_satisfaction,
+    ROUND(AVG(duration_minutes), 1) AS avg_duration,
+    ROUND(SUM(CASE WHEN resolution_status = 'Resolved' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS resolution_rate_pct
+FROM customer_service_interactions_clean
+GROUP BY DATE_TRUNC('quarter', interaction_date)
+ORDER BY quarter DESC;

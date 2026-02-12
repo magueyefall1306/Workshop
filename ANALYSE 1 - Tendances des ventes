@@ -1,0 +1,158 @@
+-- =====================================================
+-- PHASE 2 - ANALYSE 1 : Tendances des ventes
+-- =====================================================
+-- Description: Analyse de l'évolution des ventes dans le temps, par produit, catégorie et région
+
+USE DATABASE ANYCOMPANY_LAB;
+USE SCHEMA SILVER;
+
+-- ==========================================
+-- 1. ÉVOLUTION DES VENTES DANS LE TEMPS
+-- ==========================================
+
+-- Ventes mensuelles
+SELECT 
+    DATE_TRUNC('month', transaction_date) AS month,
+    COUNT(DISTINCT transaction_id) AS total_transactions,
+    SUM(amount) AS total_revenue,
+    AVG(amount) AS avg_transaction_value,
+    COUNT(DISTINCT entity) AS unique_entities
+FROM financial_transactions_clean
+WHERE transaction_type = 'Sale'
+GROUP BY DATE_TRUNC('month', transaction_date)
+ORDER BY month DESC;
+
+-- Tendance trimestrielle
+SELECT 
+    DATE_TRUNC('quarter', transaction_date) AS quarter,
+    COUNT(*) AS transaction_count,
+    SUM(amount) AS total_revenue,
+    ROUND(AVG(amount), 2) AS avg_revenue,
+    MIN(amount) AS min_transaction,
+    MAX(amount) AS max_transaction
+FROM financial_transactions_clean
+WHERE transaction_type = 'Sale'
+GROUP BY DATE_TRUNC('quarter', transaction_date)
+ORDER BY quarter DESC;
+
+-- Évolution annuelle
+SELECT 
+    YEAR(transaction_date) AS year,
+    COUNT(*) AS total_sales,
+    ROUND(SUM(amount), 2) AS total_revenue,
+    ROUND(AVG(amount), 2) AS avg_transaction
+FROM financial_transactions_clean
+WHERE transaction_type = 'Sale'
+GROUP BY YEAR(transaction_date)
+ORDER BY year DESC;
+
+-- ==========================================
+-- 2. PERFORMANCE PAR RÉGION
+-- ==========================================
+
+-- Ventes par région
+SELECT 
+    region,
+    COUNT(*) AS transaction_count,
+    ROUND(SUM(amount), 2) AS total_revenue,
+    ROUND(AVG(amount), 2) AS avg_transaction,
+    ROUND(SUM(amount) * 100.0 / SUM(SUM(amount)) OVER(), 2) AS revenue_percentage
+FROM financial_transactions_clean
+WHERE transaction_type = 'Sale'
+    AND region IS NOT NULL
+GROUP BY region
+ORDER BY total_revenue DESC;
+
+-- Top 10 pays par revenus
+SELECT 
+    region,
+    COUNT(DISTINCT entity) AS unique_sellers,
+    COUNT(*) AS transaction_count,
+    ROUND(SUM(amount), 2) AS total_revenue,
+    ROUND(AVG(amount), 2) AS avg_revenue
+FROM financial_transactions_clean
+WHERE transaction_type = 'Sale'
+GROUP BY region
+ORDER BY total_revenue DESC
+LIMIT 10;
+
+-- ==========================================
+-- 3. ANALYSE DES TYPES DE TRANSACTIONS
+-- ==========================================
+
+-- Répartition par type de transaction
+SELECT 
+    transaction_type,
+    COUNT(*) AS transaction_count,
+    ROUND(SUM(amount), 2) AS total_amount,
+    ROUND(AVG(amount), 2) AS avg_amount,
+    ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 2) AS percentage
+FROM financial_transactions_clean
+GROUP BY transaction_type
+ORDER BY total_amount DESC;
+
+-- ==========================================
+-- 5. IDENTIFICATION DES PÉRIODES DE POINTE
+-- ==========================================
+
+-- Ventes par jour de la semaine
+SELECT 
+    DAYNAME(transaction_date) AS day_of_week,
+    DAYOFWEEK(transaction_date) AS day_number,
+    COUNT(*) AS transaction_count,
+    ROUND(SUM(amount), 2) AS total_revenue,
+    ROUND(AVG(amount), 2) AS avg_transaction
+FROM financial_transactions_clean
+WHERE transaction_type = 'Sale'
+GROUP BY DAYNAME(transaction_date), DAYOFWEEK(transaction_date)
+ORDER BY day_number;
+
+-- Ventes par mois de l'année
+SELECT 
+    MONTHNAME(transaction_date) AS month_name,
+    MONTH(transaction_date) AS month_number,
+    COUNT(*) AS transaction_count,
+    ROUND(SUM(amount), 2) AS total_revenue
+FROM financial_transactions_clean
+WHERE transaction_type = 'Sale'
+GROUP BY MONTHNAME(transaction_date), MONTH(transaction_date)
+ORDER BY month_number;
+
+-- ==========================================
+-- 6. CROISSANCE ET TENDANCES
+-- ==========================================
+
+-- Taux de croissance mensuel
+WITH monthly_sales AS (
+    SELECT 
+        DATE_TRUNC('month', transaction_date) AS month,
+        SUM(amount) AS revenue
+    FROM financial_transactions_clean
+    WHERE transaction_type = 'Sale'
+    GROUP BY DATE_TRUNC('month', transaction_date)
+)
+SELECT 
+    month,
+    revenue,
+    LAG(revenue) OVER (ORDER BY month) AS previous_month_revenue,
+    ROUND((revenue - LAG(revenue) OVER (ORDER BY month)) * 100.0 / 
+          NULLIF(LAG(revenue) OVER (ORDER BY month), 0), 2) AS growth_rate_percentage
+FROM monthly_sales
+ORDER BY month DESC;
+
+-- ==========================================
+-- 7. TOP PERFORMERS
+-- ==========================================
+
+-- Top 20 entités par revenus
+SELECT 
+    entity,
+    region,
+    COUNT(*) AS transaction_count,
+    ROUND(SUM(amount), 2) AS total_revenue,
+    ROUND(AVG(amount), 2) AS avg_transaction
+FROM financial_transactions_clean
+WHERE transaction_type = 'Sale'
+GROUP BY entity, region
+ORDER BY total_revenue DESC
+LIMIT 20;

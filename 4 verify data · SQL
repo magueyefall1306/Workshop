@@ -1,0 +1,190 @@
+
+-- =====================================================
+-- PHASE 1 - ÉTAPE 4 : Vérifications après chargement
+-- =====================================================
+
+USE DATABASE ANYCOMPANY_LAB;
+USE SCHEMA BRONZE;
+
+-- ==========================================
+-- 1. COMPTAGE DES LIGNES PAR TABLE
+-- ==========================================
+
+SELECT 'customer_demographics' AS table_name, COUNT(*) AS row_count FROM customer_demographics
+UNION ALL
+SELECT 'customer_service_interactions', COUNT(*) FROM customer_service_interactions
+UNION ALL
+SELECT 'financial_transactions', COUNT(*) FROM financial_transactions
+UNION ALL
+SELECT 'promotions_data', COUNT(*) FROM promotions_data
+UNION ALL
+SELECT 'marketing_campaigns', COUNT(*) FROM marketing_campaigns
+UNION ALL
+SELECT 'product_reviews', COUNT(*) FROM product_reviews
+UNION ALL
+SELECT 'logistics_and_shipping', COUNT(*) FROM logistics_and_shipping
+UNION ALL
+SELECT 'supplier_information', COUNT(*) FROM supplier_information
+UNION ALL
+SELECT 'employee_records', COUNT(*) FROM employee_records
+UNION ALL
+SELECT 'inventory', COUNT(*) FROM inventory
+UNION ALL
+SELECT 'store_locations', COUNT(*) FROM store_locations
+ORDER BY table_name;
+
+-- ==========================================
+-- 2. INSPECTION D'ÉCHANTILLONS (10 premières lignes)
+-- ==========================================
+
+-- Customer demographics
+SELECT 'CUSTOMER_DEMOGRAPHICS - Sample' AS INFO;
+SELECT * FROM customer_demographics LIMIT 10;
+
+-- Financial transactions
+SELECT 'FINANCIAL_TRANSACTIONS - Sample' AS INFO;
+SELECT * FROM financial_transactions LIMIT 10;
+
+-- Promotions
+SELECT 'PROMOTIONS_DATA - Sample' AS INFO;
+SELECT * FROM promotions_data LIMIT 10;
+
+-- Marketing campaigns
+SELECT 'MARKETING_CAMPAIGNS - Sample' AS INFO;
+SELECT * FROM marketing_campaigns LIMIT 10;
+
+-- Product reviews
+SELECT 'PRODUCT_REVIEWS - Sample' AS INFO;
+SELECT * FROM product_reviews LIMIT 10;
+
+-- Inventory
+SELECT 'INVENTORY - Sample' AS INFO;
+SELECT * FROM inventory LIMIT 10;
+
+-- Store locations
+SELECT 'STORE_LOCATIONS - Sample' AS INFO;
+SELECT * FROM store_locations LIMIT 10;
+
+-- ==========================================
+-- 3. IDENTIFICATION DES COLONNES CLÉS
+-- ==========================================
+
+-- Colonnes clés identifiées:
+-- - IDs: customer_id, transaction_id, promotion_id, campaign_id, product_id, store_id, etc.
+-- - Dates: transaction_date, start_date, end_date, review_date, ship_date, etc.
+-- - Régions: region, country, city
+-- - Catégories produits: product_category
+
+-- Vérifier les valeurs uniques des colonnes clés
+SELECT 'Nombre de clients uniques' AS metric, COUNT(DISTINCT customer_id) AS value FROM customer_demographics
+UNION ALL
+SELECT 'Nombre de produits uniques', COUNT(DISTINCT product_id) FROM product_reviews
+UNION ALL
+SELECT 'Nombre de régions uniques', COUNT(DISTINCT region) FROM financial_transactions
+UNION ALL
+SELECT 'Nombre de catégories produits', COUNT(DISTINCT product_category) FROM product_reviews
+UNION ALL
+SELECT 'Nombre de promotions actives', COUNT(DISTINCT promotion_id) FROM promotions_data
+UNION ALL
+SELECT 'Nombre de campagnes marketing', COUNT(DISTINCT campaign_id) FROM marketing_campaigns;
+
+-- ==========================================
+-- 4. VÉRIFICATION DES PÉRIODES COUVERTES
+-- ==========================================
+
+-- Périodes pour transactions financières
+SELECT 
+    'financial_transactions' AS table_name,
+    MIN(transaction_date) AS date_min,
+    MAX(transaction_date) AS date_max,
+    DATEDIFF(day, MIN(transaction_date), MAX(transaction_date)) AS days_span
+FROM financial_transactions;
+
+-- Périodes pour promotions
+SELECT 
+    'promotions_data' AS table_name,
+    MIN(start_date) AS date_min,
+    MAX(end_date) AS date_max,
+    DATEDIFF(day, MIN(start_date), MAX(end_date)) AS days_span
+FROM promotions_data;
+
+-- Périodes pour campagnes marketing
+SELECT 
+    'marketing_campaigns' AS table_name,
+    MIN(start_date) AS date_min,
+    MAX(end_date) AS date_max,
+    DATEDIFF(day, MIN(start_date), MAX(end_date)) AS days_span
+FROM marketing_campaigns;
+
+-- Périodes pour avis produits
+SELECT 
+    'product_reviews' AS table_name,
+    MIN(review_date) AS date_min,
+    MAX(review_date) AS date_max,
+    DATEDIFF(day, MIN(review_date), MAX(review_date)) AS days_span
+FROM product_reviews;
+
+-- ==========================================
+-- 5. DÉTECTION DES VALEURS MANQUANTES
+-- ==========================================
+
+-- Valeurs NULL dans customer_demographics
+SELECT 
+    'customer_demographics' AS table_name,
+    COUNT(*) AS total_rows,
+    SUM(CASE WHEN customer_id IS NULL THEN 1 ELSE 0 END) AS null_customer_id,
+    SUM(CASE WHEN name IS NULL THEN 1 ELSE 0 END) AS null_name,
+    SUM(CASE WHEN region IS NULL THEN 1 ELSE 0 END) AS null_region,
+    SUM(CASE WHEN annual_income IS NULL THEN 1 ELSE 0 END) AS null_annual_income
+FROM customer_demographics;
+
+-- Valeurs NULL dans financial_transactions
+SELECT 
+    'financial_transactions' AS table_name,
+    COUNT(*) AS total_rows,
+    SUM(CASE WHEN transaction_id IS NULL THEN 1 ELSE 0 END) AS null_transaction_id,
+    SUM(CASE WHEN amount IS NULL THEN 1 ELSE 0 END) AS null_amount,
+    SUM(CASE WHEN region IS NULL THEN 1 ELSE 0 END) AS null_region
+FROM financial_transactions;
+
+-- Valeurs NULL dans logistics_and_shipping
+SELECT 
+    'logistics_and_shipping' AS table_name,
+    COUNT(*) AS total_rows,
+    SUM(CASE WHEN shipment_id IS NULL THEN 1 ELSE 0 END) AS null_shipment_id,
+    SUM(CASE WHEN shipping_cost IS NULL THEN 1 ELSE 0 END) AS null_shipping_cost,
+    SUM(CASE WHEN destination_region IS NULL THEN 1 ELSE 0 END) AS null_destination_region,
+    SUM(CASE WHEN destination_country IS NULL THEN 1 ELSE 0 END) AS null_destination_country
+FROM logistics_and_shipping;
+
+-- ==========================================
+-- 6. DÉTECTION D'ANOMALIES
+-- ==========================================
+
+-- Montants négatifs dans transactions
+SELECT 'Transactions avec montants négatifs' AS anomaly, COUNT(*) AS count
+FROM financial_transactions
+WHERE amount < 0;
+
+-- Dates incohérentes dans promotions (end_date avant start_date)
+SELECT 'Promotions avec dates incohérentes' AS anomaly, COUNT(*) AS count
+FROM promotions_data
+WHERE end_date < start_date;
+
+-- Dates incohérentes dans campagnes
+SELECT 'Campagnes avec dates incohérentes' AS anomaly, COUNT(*) AS count
+FROM marketing_campaigns
+WHERE end_date < start_date;
+
+-- Stock négatif
+SELECT 'Produits avec stock négatif' AS anomaly, COUNT(*) AS count
+FROM inventory
+WHERE current_stock < 0;
+
+-- Ratings en dehors de 1-5
+SELECT 'Avis avec rating invalide' AS anomaly, COUNT(*) AS count
+FROM product_reviews
+WHERE rating < 1 OR rating > 5;
+
+-- Message final
+SELECT 'Vérifications terminées avec succès!' AS STATUS;

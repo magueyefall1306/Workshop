@@ -14,7 +14,7 @@ AnyCompany Food & Beverage fait face à une baisse de ventes sans précédent et
 
 ## Architecture du projet
 
-### Stack Technologique
+### Stack technique
 - **Plateforme analytique** : Snowflake (AWS us-west-2)
 - **Source de données** : Amazon S3 (`s3://logbrain-datalake/datasets/food-beverage/`)
 - **Langage** : SQL (Snowflake)

@@ -1,0 +1,162 @@
+-- =====================================================
+-- PHASE 1 - ÉTAPE 2 : Création des tables BRONZE
+-- =====================================================
+-- Description: Création de toutes les tables pour stocker les données brutes
+
+USE DATABASE ANYCOMPANY_LAB;
+USE SCHEMA BRONZE;
+
+-- ==========================================
+-- TABLES CSV
+-- ==========================================
+
+-- 1. Table customer_demographics
+CREATE OR REPLACE TABLE customer_demographics (
+    customer_id NUMBER(38,0),
+    name VARCHAR(255),
+    date_of_birth DATE,
+    gender VARCHAR(50),
+    region VARCHAR(100),
+    country VARCHAR(100),
+    city VARCHAR(100),
+    marital_status VARCHAR(50),
+    annual_income NUMBER(38,0)
+) COMMENT = 'Données démographiques des clients';
+
+-- 2. Table customer_service_interactions
+CREATE OR REPLACE TABLE customer_service_interactions (
+    interaction_id VARCHAR(50),
+    interaction_date DATE,
+    interaction_type VARCHAR(50),
+    issue_category VARCHAR(100),
+    description TEXT,
+    duration_minutes NUMBER(38,0),
+    resolution_status VARCHAR(50),
+    follow_up_required VARCHAR(10),
+    customer_satisfaction NUMBER(38,0)
+) COMMENT = 'Interactions avec le service client';
+
+-- 3. Table financial_transactions
+CREATE OR REPLACE TABLE financial_transactions (
+    transaction_id VARCHAR(50),
+    transaction_date DATE,
+    transaction_type VARCHAR(100),
+    amount DECIMAL(15,2),
+    payment_method VARCHAR(100),
+    entity VARCHAR(255),
+    region VARCHAR(100),
+    account_code VARCHAR(50)
+) COMMENT = 'Transactions financières';
+
+-- 4. Table promotions_data
+CREATE OR REPLACE TABLE promotions_data (
+    promotion_id VARCHAR(50),
+    product_category VARCHAR(100),
+    promotion_type VARCHAR(100),
+    discount_percentage DECIMAL(5,2),
+    start_date DATE,
+    end_date DATE,
+    region VARCHAR(100)
+) COMMENT = 'Données des promotions produits';
+
+-- 5. Table marketing_campaigns
+CREATE OR REPLACE TABLE marketing_campaigns (
+    campaign_id VARCHAR(50),
+    campaign_name VARCHAR(255),
+    campaign_type VARCHAR(100),
+    product_category VARCHAR(100),
+    target_audience VARCHAR(100),
+    start_date DATE,
+    end_date DATE,
+    region VARCHAR(100),
+    budget DECIMAL(15,2),
+    reach NUMBER(38,0),
+    conversion_rate DECIMAL(6,4)
+) COMMENT = 'Campagnes marketing';
+
+-- 6. Table product_reviews
+CREATE OR REPLACE TABLE product_reviews (
+    review_id NUMBER(38,0),
+    product_id VARCHAR(50),
+    reviewer_id VARCHAR(50),
+    reviewer_name VARCHAR(255),
+    rating NUMBER(38,0),
+    review_date DATE,
+    review_title VARCHAR(255),
+    review_text TEXT,
+    product_category VARCHAR(100)
+) COMMENT = 'Avis et notes produits';
+
+-- 7. Table logistics_and_shipping
+CREATE OR REPLACE TABLE logistics_and_shipping (
+    shipment_id VARCHAR(50),
+    order_id VARCHAR(50),
+    ship_date DATE,
+    estimated_delivery DATE,
+    shipping_method VARCHAR(100),
+    status VARCHAR(50),
+    shipping_cost DECIMAL(10,2),
+    destination_region VARCHAR(100),
+    destination_country VARCHAR(100),
+    carrier VARCHAR(255)
+) COMMENT = 'Données logistiques et expéditions';
+
+-- 8. Table supplier_information
+CREATE OR REPLACE TABLE supplier_information (
+    supplier_id VARCHAR(50),
+    supplier_name VARCHAR(255),
+    product_category VARCHAR(100),
+    region VARCHAR(100),
+    country VARCHAR(100),
+    city VARCHAR(100),
+    lead_time NUMBER(38,0),
+    reliability_score DECIMAL(5,2),
+    quality_rating VARCHAR(10)
+) COMMENT = 'Informations fournisseurs';
+
+-- 9. Table employee_records
+CREATE OR REPLACE TABLE employee_records (
+    employee_id VARCHAR(50),
+    name VARCHAR(255),
+    date_of_birth DATE,
+    hire_date DATE,
+    department VARCHAR(100),
+    job_title VARCHAR(255),
+    salary DECIMAL(15,2),
+    region VARCHAR(100),
+    country VARCHAR(100),
+    email VARCHAR(255)
+) COMMENT = 'Données des employés';
+
+-- ==========================================
+-- TABLES JSON
+-- ==========================================
+
+-- 10. Table inventory (depuis JSON)
+CREATE OR REPLACE TABLE inventory (
+    product_id VARCHAR(50),
+    product_category VARCHAR(100),
+    region VARCHAR(100),
+    country VARCHAR(100),
+    warehouse VARCHAR(255),
+    current_stock NUMBER(38,0),
+    reorder_point NUMBER(38,0),
+    lead_time NUMBER(38,0),
+    last_restock_date DATE
+) COMMENT = 'Niveaux de stock par produit et entrepôt';
+
+-- 11. Table store_locations (depuis JSON)
+CREATE OR REPLACE TABLE store_locations (
+    store_id VARCHAR(50),
+    store_name VARCHAR(255),
+    store_type VARCHAR(100),
+    region VARCHAR(100),
+    country VARCHAR(100),
+    city VARCHAR(100),
+    address VARCHAR(500),
+    postal_code NUMBER(38,0),
+    square_footage DECIMAL(10,2),
+    employee_count NUMBER(38,0)
+) COMMENT = 'Informations géographiques des magasins';
+
+SHOW TABLES IN SCHEMA BRONZE;

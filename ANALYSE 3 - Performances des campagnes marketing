@@ -1,0 +1,216 @@
+-- =====================================================
+-- PHASE 2 - ANALYSE 3 : Performance des campagnes marketing
+-- =====================================================
+-- Description: Analyse du ROI et de l'efficacité des campagnes marketing
+
+USE DATABASE ANYCOMPANY_LAB;
+USE SCHEMA SILVER;
+
+-- ==========================================
+-- 1. VUE D'ENSEMBLE DES CAMPAGNES
+-- ==========================================
+
+-- Statistiques globales
+SELECT 
+    COUNT(DISTINCT campaign_id) AS total_campaigns,
+    COUNT(DISTINCT product_category) AS categories_covered,
+    COUNT(DISTINCT region) AS regions_covered,
+    ROUND(SUM(budget), 2) AS total_budget,
+    ROUND(AVG(budget), 2) AS avg_budget,
+    SUM(reach) AS total_reach,
+    ROUND(AVG(conversion_rate * 100), 2) AS avg_conversion_rate_pct
+FROM marketing_campaigns_clean;
+
+-- ==========================================
+-- 2. PERFORMANCE PAR TYPE DE CAMPAGNE
+-- ==========================================
+
+-- ROI par type de campagne
+SELECT 
+    campaign_type,
+    COUNT(*) AS campaign_count,
+    ROUND(SUM(budget), 2) AS total_budget,
+    SUM(reach) AS total_reach,
+    ROUND(AVG(conversion_rate * 100), 2) AS avg_conversion_pct,
+    ROUND(SUM(budget) / NULLIF(SUM(reach), 0), 4) AS cost_per_reach,
+    ROUND(SUM(reach * conversion_rate), 0) AS estimated_conversions
+FROM marketing_campaigns_clean
+GROUP BY campaign_type
+ORDER BY estimated_conversions DESC;
+
+
+-- ==========================================
+-- 3. PERFORMANCE PAR RÉGION
+-- ==========================================
+
+-- ROI régional
+SELECT 
+    region,
+    COUNT(*) AS campaign_count,
+    ROUND(SUM(budget), 2) AS total_budget,
+    SUM(reach) AS total_reach,
+    ROUND(AVG(conversion_rate * 100), 2) AS avg_conversion_pct,
+    ROUND(SUM(reach * conversion_rate), 0) AS estimated_conversions,
+    ROUND(SUM(budget) / NULLIF(SUM(reach * conversion_rate), 0), 2) AS cost_per_conversion
+FROM marketing_campaigns_clean
+GROUP BY region
+ORDER BY estimated_conversions DESC;
+
+-- ==========================================
+-- 4. PERFORMANCE PAR AUDIENCE CIBLE
+-- ==========================================
+
+-- Efficacité par segment d'audience
+SELECT 
+    target_audience,
+    COUNT(*) AS campaign_count,
+    ROUND(SUM(budget), 2) AS total_budget,
+    SUM(reach) AS total_reach,
+    ROUND(AVG(conversion_rate * 100), 2) AS avg_conversion_pct,
+    ROUND(SUM(reach * conversion_rate), 0) AS total_conversions
+FROM marketing_campaigns_clean
+GROUP BY target_audience
+ORDER BY total_conversions DESC;
+
+-- ==========================================
+-- 5. TOP 20 CAMPAGNES LES PLUS PERFORMANTES
+-- ==========================================
+
+-- Top campagnes par conversions estimées
+SELECT 
+    campaign_id,
+    campaign_name,
+    campaign_type,
+    product_category,
+    region,
+    ROUND(budget, 2) AS budget,
+    reach,
+    ROUND(conversion_rate * 100, 2) AS conversion_pct,
+    ROUND(reach * conversion_rate, 0) AS estimated_conversions,
+    ROUND(budget / NULLIF(reach * conversion_rate, 0), 2) AS cost_per_conversion
+FROM marketing_campaigns_clean
+ORDER BY estimated_conversions DESC
+LIMIT 20;
+
+-- ==========================================
+-- 6. BOTTOM 20 CAMPAGNES (Moins performantes)
+-- ==========================================
+
+-- Campagnes avec le plus mauvais ROI
+SELECT 
+    campaign_id,
+    campaign_name,
+    campaign_type,
+    product_category,
+    region,
+    ROUND(budget, 2) AS budget,
+    reach,
+    ROUND(conversion_rate * 100, 2) AS conversion_pct,
+    ROUND(reach * conversion_rate, 0) AS estimated_conversions,
+    ROUND(budget / NULLIF(reach * conversion_rate, 0), 2) AS cost_per_conversion
+FROM marketing_campaigns_clean
+WHERE reach * conversion_rate > 0
+ORDER BY cost_per_conversion DESC
+LIMIT 20;
+
+-- ==========================================
+-- 7. ANALYSE TEMPORELLE DES CAMPAGNES
+-- ==========================================
+
+-- Campagnes par trimestre
+SELECT 
+    DATE_TRUNC('quarter', start_date) AS quarter,
+    COUNT(*) AS campaign_count,
+    ROUND(SUM(budget), 2) AS total_budget,
+    SUM(reach) AS total_reach,
+    ROUND(AVG(conversion_rate * 100), 2) AS avg_conversion_pct
+FROM marketing_campaigns_clean
+GROUP BY DATE_TRUNC('quarter', start_date)
+ORDER BY quarter DESC;
+
+-- Évolution mensuelle
+SELECT 
+    TO_VARCHAR(start_date, 'YYYY-MM') AS month,
+    COUNT(*) AS campaigns_launched,
+    ROUND(SUM(budget), 2) AS total_budget,
+    SUM(reach) AS total_reach,
+    ROUND(SUM(reach * conversion_rate), 0) AS estimated_conversions
+FROM marketing_campaigns_clean
+GROUP BY TO_VARCHAR(start_date, 'YYYY-MM')
+ORDER BY month DESC
+LIMIT 12;
+
+-- ==========================================
+-- 8. DURÉE ET EFFICACITÉ DES CAMPAGNES
+-- ==========================================
+
+-- Corrélation entre durée et performance
+SELECT 
+    CASE 
+        WHEN campaign_duration_days <= 7 THEN '1 week or less'
+        WHEN campaign_duration_days <= 14 THEN '1-2 weeks'
+        WHEN campaign_duration_days <= 30 THEN '2-4 weeks'
+        ELSE 'More than 1 month'
+    END AS duration_bucket,
+    COUNT(*) AS campaign_count,
+    ROUND(AVG(budget), 2) AS avg_budget,
+    ROUND(AVG(reach), 0) AS avg_reach,
+    ROUND(AVG(conversion_rate * 100), 2) AS avg_conversion_pct
+FROM marketing_campaigns_clean
+GROUP BY duration_bucket
+ORDER BY 
+    CASE duration_bucket
+        WHEN '1 week or less' THEN 1
+        WHEN '1-2 weeks' THEN 2
+        WHEN '2-4 weeks' THEN 3
+        ELSE 4
+    END;
+
+-- ==========================================
+-- 9. EFFICIENCE BUDGÉTAIRE
+-- ==========================================
+
+-- Campagnes avec le meilleur rapport coût/efficacité
+WITH campaign_metrics AS (
+    SELECT 
+        campaign_id,
+        campaign_name,
+        campaign_type,
+        product_category,
+        budget,
+        reach,
+        conversion_rate,
+        cost_per_reach,
+        reach * conversion_rate AS conversions,
+        budget / NULLIF(reach * conversion_rate, 0) AS cost_per_conversion
+    FROM marketing_campaigns_clean
+    WHERE reach > 0 AND conversion_rate > 0
+)
+SELECT 
+    campaign_type,
+    COUNT(*) AS campaign_count,
+    ROUND(AVG(cost_per_conversion), 2) AS avg_cost_per_conversion,
+    ROUND(MIN(cost_per_conversion), 2) AS best_cost_per_conversion,
+    ROUND(MAX(cost_per_conversion), 2) AS worst_cost_per_conversion
+FROM campaign_metrics
+GROUP BY campaign_type
+ORDER BY avg_cost_per_conversion;
+
+
+-- ==========================================
+-- 10. RECOMMANDATIONS STRATÉGIQUES
+-- ==========================================
+
+-- Identifier les combinaisons gagnantes (type + catégorie + audience)
+SELECT 
+    campaign_type,
+    product_category,
+    target_audience,
+    COUNT(*) AS campaign_count,
+    ROUND(AVG(conversion_rate * 100), 2) AS avg_conversion_pct,
+    ROUND(SUM(reach * conversion_rate), 0) AS total_conversions
+FROM marketing_campaigns_clean
+GROUP BY campaign_type, product_category, target_audience
+HAVING COUNT(*) >= 3  -- Au moins 3 campagnes pour être significatif
+ORDER BY avg_conversion_pct DESC
+LIMIT 15;

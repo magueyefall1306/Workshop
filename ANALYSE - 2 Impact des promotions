@@ -1,0 +1,127 @@
+-- =====================================================
+-- PHASE 2 - ANALYSE 2 : Impact des promotions
+-- =====================================================
+-- Description: Analyse de l'efficacité des promotions sur les ventes
+
+USE DATABASE ANYCOMPANY_LAB;
+USE SCHEMA SILVER;
+
+-- ==========================================
+-- 1. VUE D'ENSEMBLE DES PROMOTIONS
+-- ==========================================
+
+-- Statistiques générales des promotions
+SELECT 
+    COUNT(DISTINCT promotion_id) AS total_promotions,
+    COUNT(DISTINCT product_category) AS categories_with_promos,
+    COUNT(DISTINCT region) AS regions_covered,
+    ROUND(AVG(discount_percentage * 100), 2) AS avg_discount_pct,
+    MIN(discount_percentage * 100) AS min_discount_pct,
+    MAX(discount_percentage * 100) AS max_discount_pct,
+    ROUND(AVG(promotion_duration_days), 1) AS avg_duration_days
+FROM promotions_clean;
+
+-- ==========================================
+-- 2. PROMOTIONS PAR CATÉGORIE
+-- ==========================================
+
+-- Performance des promotions par catégorie
+SELECT 
+    product_category,
+    COUNT(DISTINCT promotion_id) AS promo_count,
+    ROUND(AVG(discount_percentage * 100), 2) AS avg_discount_pct,
+    ROUND(AVG(promotion_duration_days), 1) AS avg_duration_days,
+    MIN(start_date) AS first_promo_date,
+    MAX(end_date) AS last_promo_date
+FROM promotions_clean
+GROUP BY product_category
+ORDER BY promo_count DESC;
+
+-- ==========================================
+-- 3. PROMOTIONS PAR RÉGION
+-- ==========================================
+
+-- Distribution régionale des promotions
+SELECT 
+    region,
+    COUNT(DISTINCT promotion_id) AS total_promos,
+    COUNT(DISTINCT product_category) AS categories_promoted,
+    ROUND(AVG(discount_percentage * 100), 2) AS avg_discount,
+    ROUND(SUM(promotion_duration_days), 0) AS total_promo_days
+FROM promotions_clean
+GROUP BY region
+ORDER BY total_promos DESC;
+
+-- ==========================================
+-- 4. TYPES DE PROMOTIONS
+-- ==========================================
+
+-- Analyse par type de promotion
+SELECT 
+    promotion_type,
+    COUNT(*) AS promo_count,
+    COUNT(DISTINCT product_category) AS categories_covered,
+    ROUND(AVG(discount_percentage * 100), 2) AS avg_discount,
+    ROUND(AVG(promotion_duration_days), 1) AS avg_duration
+FROM promotions_clean
+GROUP BY promotion_type
+ORDER BY promo_count DESC;
+
+-- ==========================================
+-- 5. CALENDRIER DES PROMOTIONS
+-- ==========================================
+
+-- Promotions par trimestre
+SELECT 
+    DATE_TRUNC('quarter', start_date) AS quarter,
+    COUNT(DISTINCT promotion_id) AS promo_count,
+    COUNT(DISTINCT product_category) AS categories,
+    ROUND(AVG(discount_percentage * 100), 2) AS avg_discount
+FROM promotions_clean
+GROUP BY DATE_TRUNC('quarter', start_date)
+ORDER BY quarter DESC;
+
+-- Promotions par mois
+SELECT 
+    TO_VARCHAR(start_date, 'YYYY-MM') AS month,
+    COUNT(*) AS promos_started,
+    COUNT(DISTINCT product_category) AS categories,
+    ROUND(AVG(discount_percentage * 100), 2) AS avg_discount
+FROM promotions_clean
+GROUP BY TO_VARCHAR(start_date, 'YYYY-MM')
+ORDER BY month DESC
+LIMIT 12;
+
+-- ==========================================
+-- 6. TOP PROMOTIONS PAR REMISE
+-- ==========================================
+
+-- Top 20 promotions avec les plus grosses remises
+SELECT 
+    promotion_id,
+    product_category,
+    promotion_type,
+    ROUND(discount_percentage * 100, 2) AS discount_pct,
+    start_date,
+    end_date,
+    promotion_duration_days,
+    region
+FROM promotions_clean
+ORDER BY discount_percentage DESC
+LIMIT 20;
+
+-- ==========================================
+-- 7. ANALYSE TEMPORELLE DES PROMOTIONS
+-- ==========================================
+
+-- Durée moyenne des promotions par catégorie
+SELECT 
+    product_category,
+    COUNT(*) AS promo_count,
+    ROUND(AVG(promotion_duration_days), 1) AS avg_duration_days,
+    MIN(promotion_duration_days) AS min_duration,
+    MAX(promotion_duration_days) AS max_duration,
+    ROUND(STDDEV(promotion_duration_days), 1) AS stddev_duration
+FROM promotions_clean
+GROUP BY product_category
+ORDER BY avg_duration_days DESC;

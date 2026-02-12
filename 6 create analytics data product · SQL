@@ -1,0 +1,301 @@
+-- =====================================================
+-- PHASE 3 - PARTIE 3.1 : Création du Data Product
+-- =====================================================
+-- Description: Tables analytiques centralisées pour ML et reporting
+
+USE DATABASE ANYCOMPANY_LAB;
+USE SCHEMA ANALYTICS;
+
+-- ==========================================
+-- 1. TABLE ANALYTIQUE PRINCIPALE : SALES_ENRICHED
+-- ==========================================
+
+-- Cette table combine ventes, promotions, campagnes marketing et contexte client
+CREATE OR REPLACE TABLE sales_analytics AS
+WITH sales_base AS (
+    SELECT 
+        transaction_id,
+        transaction_date,
+        transaction_type,
+        amount,
+        payment_method,
+        entity,
+        region,
+        account_code,
+        YEAR(transaction_date) AS year,
+        QUARTER(transaction_date) AS quarter,
+        MONTH(transaction_date) AS month,
+        DAYOFWEEK(transaction_date) AS day_of_week,
+        DAYNAME(transaction_date) AS day_name
+    FROM SILVER.financial_transactions_clean
+    WHERE transaction_type = 'Sale'
+),
+active_promotions AS (
+    SELECT 
+        p.product_category,
+        p.region,
+        p.promotion_id,
+        p.promotion_type,
+        p.discount_percentage,
+        p.start_date,
+        p.end_date,
+        p.promotion_duration_days
+    FROM SILVER.promotions_clean p
+),
+active_campaigns AS (
+    SELECT 
+        c.campaign_id,
+        c.campaign_name,
+        c.campaign_type,
+        c.product_category,
+        c.region,
+        c.target_audience,
+        c.start_date,
+        c.end_date,
+        c.budget,
+        c.reach,
+        c.conversion_rate,
+        c.cost_per_reach
+    FROM SILVER.marketing_campaigns_clean c
+)
+SELECT 
+    s.*,
+    -- Indicateurs promotions
+    CASE WHEN p.promotion_id IS NOT NULL THEN 1 ELSE 0 END AS has_promotion,
+    p.promotion_id,
+    p.promotion_type,
+    p.discount_percentage,
+    -- Indicateurs campagnes marketing
+    CASE WHEN c.campaign_id IS NOT NULL THEN 1 ELSE 0 END AS has_campaign,
+    c.campaign_id,
+    c.campaign_name,
+    c.campaign_type,
+    c.target_audience,
+    c.conversion_rate AS campaign_conversion_rate,
+    -- Métriques calculées
+    DATEDIFF(day, s.transaction_date, CURRENT_DATE()) AS days_since_transaction,
+    ROW_NUMBER() OVER (PARTITION BY s.entity ORDER BY s.transaction_date) AS transaction_sequence
+FROM sales_base s
+LEFT JOIN active_promotions p 
+    ON s.region = p.region
+    AND s.transaction_date BETWEEN p.start_date AND p.end_date
+LEFT JOIN active_campaigns c
+    ON s.region = c.region
+    AND s.transaction_date BETWEEN c.start_date AND c.end_date;
+
+-- ==========================================
+-- 2. TABLE AGRÉGÉE : CUSTOMER_360
+-- ==========================================
+-- Vue 360° des clients avec comportement d'achat et démographie
+CREATE OR REPLACE TABLE customer_360 AS
+WITH customer_transactions AS (
+    SELECT 
+        cd.customer_id,
+        COUNT(DISTINCT ft.transaction_id) AS total_purchases,
+        SUM(ft.amount) AS total_spent,
+        AVG(ft.amount) AS avg_transaction_value,
+        MIN(ft.transaction_date) AS first_purchase_date,
+        MAX(ft.transaction_date) AS last_purchase_date,
+        DATEDIFF(day, MAX(ft.transaction_date), CURRENT_DATE()) AS days_since_last_purchase,
+        DATEDIFF(day, MIN(ft.transaction_date), MAX(ft.transaction_date)) AS customer_lifetime_days
+    FROM SILVER.customer_demographics_clean cd
+    LEFT JOIN SILVER.financial_transactions_clean ft 
+        ON cd.region = ft.region
+    WHERE ft.transaction_type = 'Sale'
+    GROUP BY cd.customer_id 
+),
+customer_reviews AS (
+    SELECT 
+        reviewer_id,
+        COUNT(*) AS total_reviews,
+        AVG(rating) AS avg_rating_given
+    FROM SILVER.product_reviews_clean
+    GROUP BY reviewer_id
+)
+SELECT 
+    cd.customer_id,
+    cd.name,
+    cd.gender,
+    cd.region,
+    cd.country,
+    cd.city,
+    cd.marital_status,
+    cd.annual_income,
+    YEAR(CURRENT_DATE()) - YEAR(cd.date_of_birth) AS age,
+    -- Métriques transactionnelles
+    COALESCE(ct.total_purchases, 0) AS total_purchases,
+    COALESCE(ct.total_spent, 0) AS total_spent,
+    COALESCE(ct.avg_transaction_value, 0) AS avg_transaction_value,
+    ct.first_purchase_date,
+    ct.last_purchase_date,
+    COALESCE(ct.days_since_last_purchase, 9999) AS days_since_last_purchase,
+    COALESCE(ct.customer_lifetime_days, 0) AS customer_lifetime_days,
+    -- Métriques engagement
+    COALESCE(cr.total_reviews, 0) AS total_reviews,
+    COALESCE(cr.avg_rating_given, 0) AS avg_rating_given,
+    -- Métriques service client (non disponibles - pas de lien customer_id)
+    0 AS service_interactions,
+    0 AS avg_satisfaction,
+    -- Segmentation RFM (Recency, Frequency, Monetary)
+    CASE 
+        WHEN ct.days_since_last_purchase <= 30 THEN 'Active'
+        WHEN ct.days_since_last_purchase <= 90 THEN 'At Risk'
+        WHEN ct.days_since_last_purchase <= 180 THEN 'Dormant'
+        ELSE 'Lost'
+    END AS customer_status,
+    CASE 
+        WHEN ct.total_purchases >= 10 THEN 'High Frequency'
+        WHEN ct.total_purchases >= 5 THEN 'Medium Frequency'
+        WHEN ct.total_purchases >= 1 THEN 'Low Frequency'
+        ELSE 'No Purchase'
+    END AS frequency_segment,
+    CASE 
+        WHEN ct.total_spent >= 10000 THEN 'High Value'
+        WHEN ct.total_spent >= 5000 THEN 'Medium Value'
+        WHEN ct.total_spent >= 1000 THEN 'Low Value'
+        ELSE 'Minimal Value'
+    END AS value_segment
+FROM SILVER.customer_demographics_clean cd
+LEFT JOIN customer_transactions ct ON cd.customer_id = ct.customer_id
+LEFT JOIN customer_reviews cr ON cd.customer_id = cr.reviewer_id;
+
+-- ==========================================
+-- 3. TABLE AGRÉGÉE : PRODUCT_PERFORMANCE
+-- ==========================================
+
+-- Performance des produits avec avis et inventaire
+CREATE OR REPLACE TABLE product_performance AS
+WITH product_reviews_agg AS (
+    SELECT 
+        product_id,
+        product_category,
+        COUNT(*) AS total_reviews,
+        AVG(rating) AS avg_rating,
+        SUM(CASE WHEN rating >= 4 THEN 1 ELSE 0 END) AS positive_reviews,
+        SUM(CASE WHEN rating <= 2 THEN 1 ELSE 0 END) AS negative_reviews,
+        MAX(review_date) AS last_review_date
+    FROM SILVER.product_reviews_clean
+    GROUP BY product_id, product_category
+),
+inventory_agg AS (
+    SELECT 
+        product_id,
+        product_category,
+        SUM(current_stock) AS total_stock,
+        COUNT(DISTINCT warehouse) AS warehouse_count,
+        AVG(lead_time) AS avg_lead_time,
+        SUM(CASE WHEN stock_status = 'REORDER_NEEDED' THEN 1 ELSE 0 END) AS reorder_locations
+    FROM SILVER.inventory_clean
+    GROUP BY product_id, product_category
+)
+SELECT 
+    COALESCE(pr.product_id, inv.product_id) AS product_id,
+    COALESCE(pr.product_category, inv.product_category) AS product_category,
+    -- Métriques avis
+    COALESCE(pr.total_reviews, 0) AS total_reviews,
+    COALESCE(pr.avg_rating, 0) AS avg_rating,
+    COALESCE(pr.positive_reviews, 0) AS positive_reviews,
+    COALESCE(pr.negative_reviews, 0) AS negative_reviews,
+    pr.last_review_date,
+    -- Métriques inventaire
+    COALESCE(inv.total_stock, 0) AS total_stock,
+    COALESCE(inv.warehouse_count, 0) AS warehouse_count,
+    COALESCE(inv.avg_lead_time, 0) AS avg_lead_time,
+    COALESCE(inv.reorder_locations, 0) AS reorder_locations,
+    -- Indicateurs calculés
+    CASE 
+        WHEN pr.avg_rating >= 4.5 THEN 'Excellent'
+        WHEN pr.avg_rating >= 4.0 THEN 'Good'
+        WHEN pr.avg_rating >= 3.0 THEN 'Average'
+        WHEN pr.avg_rating < 3.0 THEN 'Poor'
+        ELSE 'No Reviews'
+    END AS rating_category,
+    CASE 
+        WHEN inv.reorder_locations > 0 THEN 'Critical Stock'
+        WHEN inv.total_stock < 100 THEN 'Low Stock'
+        WHEN inv.total_stock < 500 THEN 'Medium Stock'
+        ELSE 'Good Stock'
+    END AS stock_category
+FROM product_reviews_agg pr
+FULL OUTER JOIN inventory_agg inv 
+    ON pr.product_id = inv.product_id 
+    AND pr.product_category = inv.product_category;
+
+-- ==========================================
+-- 4. TABLE AGRÉGÉE : PROMOTION_EFFECTIVENESS
+-- ==========================================
+
+-- Efficacité des promotions par catégorie et région
+CREATE OR REPLACE TABLE promotion_effectiveness AS
+SELECT 
+    p.promotion_id,
+    p.product_category,
+    p.promotion_type,
+    p.region,
+    p.discount_percentage,
+    p.start_date,
+    p.end_date,
+    p.promotion_duration_days,
+    -- Compter les reviews pendant la promotion comme proxy des ventes
+    COUNT(DISTINCT r.review_id) AS reviews_during_promo,
+    AVG(r.rating) AS avg_rating_during_promo
+FROM SILVER.promotions_clean p
+LEFT JOIN SILVER.product_reviews_clean r
+    ON p.product_category = r.product_category
+    AND r.review_date BETWEEN p.start_date AND p.end_date
+GROUP BY 
+    p.promotion_id, p.product_category, p.promotion_type, 
+    p.region, p.discount_percentage, p.start_date, p.end_date, p.promotion_duration_days;
+
+-- ==========================================
+-- 5. TABLE AGRÉGÉE : MARKETING_ROI
+-- ==========================================
+
+-- ROI des campagnes marketing
+CREATE OR REPLACE TABLE marketing_roi AS
+SELECT 
+    campaign_id,
+    campaign_name,
+    campaign_type,
+    product_category,
+    region,
+    target_audience,
+    start_date,
+    end_date,
+    campaign_duration_days,
+    budget,
+    reach,
+    conversion_rate,
+    cost_per_reach,
+    -- Métriques calculées
+    reach * conversion_rate AS estimated_conversions,
+    budget / NULLIF(reach * conversion_rate, 0) AS cost_per_conversion,
+    (reach * conversion_rate * 100) / NULLIF(budget, 0) AS roi_score
+FROM SILVER.marketing_campaigns_clean
+WHERE reach > 0 AND conversion_rate > 0;
+
+SELECT 'Data Product créé avec succès!' AS STATUS;
+
+-- Compter les lignes dans chaque table analytique
+SELECT 'sales_analytics' AS table_name, COUNT(*) AS row_count FROM sales_analytics
+UNION ALL
+SELECT 'customer_360', COUNT(*) FROM customer_360
+UNION ALL
+SELECT 'product_performance', COUNT(*) FROM product_performance
+UNION ALL
+SELECT 'promotion_effectiveness', COUNT(*) FROM promotion_effectiveness
+UNION ALL
+SELECT 'marketing_roi', COUNT(*) FROM marketing_roi;
+
+-- Vérifier la structure complète
+SELECT 'BRONZE' AS layer, COUNT(*) AS table_count 
+FROM INFORMATION_SCHEMA.TABLES 
+WHERE TABLE_SCHEMA = 'BRONZE' AND TABLE_CATALOG = 'ANYCOMPANY_LAB'
+UNION ALL
+SELECT 'SILVER', COUNT(*) 
+FROM INFORMATION_SCHEMA.TABLES 
+WHERE TABLE_SCHEMA = 'SILVER' AND TABLE_CATALOG = 'ANYCOMPANY_LAB'
+UNION ALL
+SELECT 'ANALYTICS', COUNT(*) 
+FROM INFORMATION_SCHEMA.TABLES 
+WHERE TABLE_SCHEMA = 'ANALYTICS' AND TABLE_CATALOG = 'ANYCOMPANY_LAB';

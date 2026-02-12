@@ -1,0 +1,128 @@
+
+-- =====================================================
+-- PHASE 1 - ÉTAPE 3 : Chargement des données depuis S3
+-- =====================================================
+-- Description: Chargement de tous les fichiers CSV et JSON depuis le bucket S3
+
+USE DATABASE ANYCOMPANY_LAB;
+USE SCHEMA BRONZE;
+USE WAREHOUSE ANYCOMPANY_WH;
+
+-- ==========================================
+-- CHARGEMENT DES FICHIERS CSV
+-- ==========================================
+
+-- 1. Charger customer_demographics.csv
+COPY INTO customer_demographics
+FROM @S3_STAGE/customer_demographics.csv
+FILE_FORMAT = CSV_FORMAT
+ON_ERROR = 'CONTINUE'
+PURGE = FALSE;
+
+-- 2. Charger customer_service_interactions.csv
+COPY INTO customer_service_interactions
+FROM @S3_STAGE/customer_service_interactions.csv
+FILE_FORMAT = CSV_FORMAT
+ON_ERROR = 'CONTINUE'
+PURGE = FALSE;
+
+-- 3. Charger financial_transactions.csv
+COPY INTO financial_transactions
+FROM @S3_STAGE/financial_transactions.csv
+FILE_FORMAT = CSV_FORMAT
+ON_ERROR = 'CONTINUE'
+PURGE = FALSE;
+
+-- 4. Charger promotions-data.csv
+COPY INTO promotions_data
+FROM @S3_STAGE/promotions-data.csv
+FILE_FORMAT = CSV_FORMAT
+ON_ERROR = 'CONTINUE'
+PURGE = FALSE;
+
+-- 5. Charger marketing_campaigns.csv
+COPY INTO marketing_campaigns
+FROM @S3_STAGE/marketing_campaigns.csv
+FILE_FORMAT = CSV_FORMAT
+ON_ERROR = 'CONTINUE'
+PURGE = FALSE;
+
+-- 6. Charger product_reviews.csv
+COPY INTO product_reviews
+FROM @S3_STAGE/product_reviews.csv
+FILE_FORMAT = CSV_FORMAT
+ON_ERROR = 'CONTINUE'
+PURGE = FALSE;
+
+-- 7. Charger logistics_and_shipping.csv
+COPY INTO logistics_and_shipping
+FROM @S3_STAGE/logistics_and_shipping.csv
+FILE_FORMAT = CSV_FORMAT
+ON_ERROR = 'CONTINUE'
+PURGE = FALSE;
+
+-- 8. Charger supplier_information.csv
+COPY INTO supplier_information
+FROM @S3_STAGE/supplier_information.csv
+FILE_FORMAT = CSV_FORMAT
+ON_ERROR = 'CONTINUE'
+PURGE = FALSE;
+
+-- 9. Charger employee_records.csv
+COPY INTO employee_records
+FROM @S3_STAGE/employee_records.csv
+FILE_FORMAT = CSV_FORMAT
+ON_ERROR = 'CONTINUE'
+PURGE = FALSE;
+
+-- ==========================================
+-- CHARGEMENT DES FICHIERS JSON
+-- ==========================================
+
+-- 10. Charger inventory.json
+COPY INTO inventory
+FROM (
+    SELECT 
+        $1:product_id::VARCHAR AS product_id,
+        $1:product_category::VARCHAR AS product_category,
+        $1:region::VARCHAR AS region,
+        $1:country::VARCHAR AS country,
+        $1:warehouse::VARCHAR AS warehouse,
+        $1:current_stock::NUMBER AS current_stock,
+        $1:reorder_point::NUMBER AS reorder_point,
+        $1:lead_time::NUMBER AS lead_time,
+        $1:last_restock_date::DATE AS last_restock_date
+    FROM @S3_STAGE/inventory.json
+)
+FILE_FORMAT = JSON_FORMAT
+ON_ERROR = 'CONTINUE'
+PURGE = FALSE;
+
+-- 11. Charger store_locations.json
+COPY INTO store_locations
+FROM (
+    SELECT 
+        $1:store_id::VARCHAR AS store_id,
+        $1:store_name::VARCHAR AS store_name,
+        $1:store_type::VARCHAR AS store_type,
+        $1:region::VARCHAR AS region,
+        $1:country::VARCHAR AS country,
+        $1:city::VARCHAR AS city,
+        $1:address::VARCHAR AS address,
+        $1:postal_code::NUMBER AS postal_code,
+        $1:square_footage::DECIMAL(10,2) AS square_footage,
+        $1:employee_count::NUMBER AS employee_count
+    FROM @S3_STAGE/store_locations.json
+)
+FILE_FORMAT = JSON_FORMAT
+ON_ERROR = 'CONTINUE'
+PURGE = FALSE;
+
+-- ==========================================
+-- VÉRIFICATION DU CHARGEMENT
+-- ==========================================
+
+SELECT * FROM TABLE(INFORMATION_SCHEMA.COPY_HISTORY(
+    TABLE_NAME => 'customer_demographics',
+    START_TIME => DATEADD(hours, -1, CURRENT_TIMESTAMP())
+));

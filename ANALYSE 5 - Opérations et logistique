@@ -1,0 +1,273 @@
+-- =====================================================
+-- PHASE 2 - ANALYSE 5 : Opérations et Logistique
+-- =====================================================
+-- Description: Analyse des stocks, ruptures, délais de livraison
+
+USE DATABASE ANYCOMPANY_LAB;
+USE SCHEMA SILVER;
+
+-- ==========================================
+-- 1. ANALYSE DES STOCKS
+-- ==========================================
+
+-- Vue d'ensemble des stocks
+SELECT 
+    COUNT(DISTINCT product_id) AS total_products,
+    COUNT(DISTINCT warehouse) AS total_warehouses,
+    COUNT(DISTINCT region) AS regions_covered,
+    SUM(current_stock) AS total_stock_units,
+    ROUND(AVG(current_stock), 0) AS avg_stock_per_product,
+    SUM(CASE WHEN stock_status = 'REORDER_NEEDED' THEN 1 ELSE 0 END) AS products_needing_reorder,
+    SUM(CASE WHEN stock_status = 'LOW_STOCK' THEN 1 ELSE 0 END) AS low_stock_products
+FROM inventory_clean;
+
+-- ==========================================
+-- 2. STATUT DES STOCKS PAR CATÉGORIE
+-- ==========================================
+
+SELECT 
+    product_category,
+    COUNT(DISTINCT product_id) AS unique_products,
+    SUM(current_stock) AS total_stock,
+    ROUND(AVG(current_stock), 0) AS avg_stock,
+    SUM(CASE WHEN stock_status = 'REORDER_NEEDED' THEN 1 ELSE 0 END) AS reorder_needed,
+    SUM(CASE WHEN stock_status = 'LOW_STOCK' THEN 1 ELSE 0 END) AS low_stock,
+    SUM(CASE WHEN stock_status = 'NORMAL' THEN 1 ELSE 0 END) AS normal_stock,
+    ROUND(SUM(CASE WHEN stock_status = 'REORDER_NEEDED' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS reorder_rate_pct
+FROM inventory_clean
+GROUP BY product_category
+ORDER BY reorder_rate_pct DESC;
+
+-- ==========================================
+-- 3. ANALYSE PAR RÉGION
+-- ==========================================
+
+SELECT 
+    region,
+    COUNT(DISTINCT warehouse) AS warehouse_count,
+    COUNT(DISTINCT product_id) AS product_count,
+    SUM(current_stock) AS total_stock,
+    ROUND(AVG(lead_time), 1) AS avg_lead_time_days,
+    SUM(CASE WHEN stock_status = 'REORDER_NEEDED' THEN 1 ELSE 0 END) AS critical_products
+FROM inventory_clean
+GROUP BY region
+ORDER BY total_stock DESC;
+
+-- ==========================================
+-- 4. PRODUITS EN RUPTURE OU CRITIQUE
+-- ==========================================
+
+-- Produits nécessitant réapprovisionnement urgent
+SELECT 
+    product_id,
+    product_category,
+    warehouse,
+    region,
+    current_stock,
+    reorder_point,
+    lead_time,
+    last_restock_date,
+    DATEDIFF(day, last_restock_date, CURRENT_DATE()) AS days_since_restock,
+    stock_status
+FROM inventory_clean
+WHERE stock_status = 'REORDER_NEEDED'
+ORDER BY current_stock ASC, lead_time DESC
+LIMIT 50;
+
+-- ==========================================
+-- 5. ANALYSE DES DÉLAIS DE RÉAPPROVISIONNEMENT
+-- ==========================================
+
+SELECT 
+    CASE 
+        WHEN lead_time <= 7 THEN '1 week or less'
+        WHEN lead_time <= 14 THEN '1-2 weeks'
+        WHEN lead_time <= 21 THEN '2-3 weeks'
+        ELSE 'More than 3 weeks'
+    END AS lead_time_bucket,
+    COUNT(*) AS product_count,
+    ROUND(AVG(current_stock), 0) AS avg_current_stock,
+    SUM(CASE WHEN stock_status = 'REORDER_NEEDED' THEN 1 ELSE 0 END) AS reorder_needed
+FROM inventory_clean
+GROUP BY lead_time_bucket
+ORDER BY 
+    CASE lead_time_bucket
+        WHEN '1 week or less' THEN 1
+        WHEN '1-2 weeks' THEN 2
+        WHEN '2-3 weeks' THEN 3
+        ELSE 4
+    END;
+
+-- ==========================================
+-- 6. PERFORMANCE LOGISTIQUE - EXPÉDITIONS
+-- ==========================================
+
+-- Vue d'ensemble des expéditions
+SELECT 
+    COUNT(DISTINCT shipment_id) AS total_shipments,
+    COUNT(DISTINCT order_id) AS unique_orders,
+    COUNT(DISTINCT destination_region) AS regions_served,
+    ROUND(AVG(shipping_cost), 2) AS avg_shipping_cost,
+    ROUND(AVG(estimated_delivery_days), 1) AS avg_delivery_days
+FROM logistics_and_shipping_clean;
+
+-- ==========================================
+-- 7. STATUT DES EXPÉDITIONS
+-- ==========================================
+
+SELECT 
+    status,
+    COUNT(*) AS shipment_count,
+    ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 2) AS percentage,
+    ROUND(AVG(shipping_cost), 2) AS avg_cost,
+    ROUND(AVG(estimated_delivery_days), 1) AS avg_delivery_days
+FROM logistics_and_shipping_clean
+GROUP BY status
+ORDER BY shipment_count DESC;
+
+-- ==========================================
+-- 8. PERFORMANCE PAR MÉTHODE D'EXPÉDITION
+-- ==========================================
+
+SELECT 
+    shipping_method,
+    COUNT(*) AS shipment_count,
+    ROUND(AVG(shipping_cost), 2) AS avg_cost,
+    ROUND(AVG(estimated_delivery_days), 1) AS avg_delivery_days,
+    SUM(CASE WHEN status = 'Delivered' THEN 1 ELSE 0 END) AS delivered_count,
+    ROUND(SUM(CASE WHEN status = 'Delivered' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS delivery_success_rate
+FROM logistics_and_shipping_clean
+GROUP BY shipping_method
+ORDER BY shipment_count DESC;
+
+-- ==========================================
+-- 9. ANALYSE PAR RÉGION DE DESTINATION
+-- ==========================================
+
+SELECT 
+    destination_region,
+    COUNT(*) AS shipment_count,
+    COUNT(DISTINCT destination_country) AS countries_served,
+    ROUND(AVG(shipping_cost), 2) AS avg_cost,
+    ROUND(AVG(estimated_delivery_days), 1) AS avg_delivery_days,
+    ROUND(SUM(shipping_cost), 2) AS total_shipping_cost
+FROM logistics_and_shipping_clean
+WHERE destination_region != 'Unknown'
+GROUP BY destination_region
+ORDER BY shipment_count DESC;
+
+-- ==========================================
+-- 10. PERFORMANCE DES TRANSPORTEURS
+-- ==========================================
+
+SELECT 
+    carrier,
+    COUNT(*) AS shipment_count,
+    ROUND(AVG(shipping_cost), 2) AS avg_cost,
+    ROUND(AVG(estimated_delivery_days), 1) AS avg_delivery_days,
+    SUM(CASE WHEN status = 'Delivered' THEN 1 ELSE 0 END) AS delivered,
+    SUM(CASE WHEN status = 'Returned' THEN 1 ELSE 0 END) AS returned,
+    ROUND(SUM(CASE WHEN status = 'Delivered' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS success_rate
+FROM logistics_and_shipping_clean
+WHERE carrier != 'Unknown'
+GROUP BY carrier
+ORDER BY shipment_count DESC
+LIMIT 20;
+
+-- ==========================================
+-- 11. ANALYSE DES RETOURS
+-- ==========================================
+
+-- Expéditions retournées
+SELECT 
+    destination_region,
+    shipping_method,
+    COUNT(*) AS return_count,
+    ROUND(AVG(shipping_cost), 2) AS avg_cost_lost
+FROM logistics_and_shipping_clean
+WHERE status = 'Returned'
+GROUP BY destination_region, shipping_method
+ORDER BY return_count DESC;
+
+-- ==========================================
+-- 12. ANALYSE DES FOURNISSEURS
+-- ==========================================
+
+-- Performance globale des fournisseurs
+SELECT 
+    COUNT(DISTINCT supplier_id) AS total_suppliers,
+    COUNT(DISTINCT product_category) AS categories_supplied,
+    ROUND(AVG(lead_time), 1) AS avg_lead_time,
+    ROUND(AVG(reliability_score * 100), 2) AS avg_reliability_pct
+FROM supplier_information_clean;
+
+-- Top fournisseurs par fiabilité
+SELECT 
+    supplier_name,
+    product_category,
+    region,
+    lead_time,
+    ROUND(reliability_score * 100, 2) AS reliability_pct,
+    quality_rating
+FROM supplier_information_clean
+WHERE reliability_score >= 0.85
+ORDER BY reliability_score DESC, lead_time ASC
+LIMIT 20;
+
+-- Fournisseurs problématiques
+SELECT 
+    supplier_name,
+    product_category,
+    region,
+    lead_time,
+    ROUND(reliability_score * 100, 2) AS reliability_pct,
+    quality_rating
+FROM supplier_information_clean
+WHERE reliability_score < 0.70 OR quality_rating = 'C'
+ORDER BY reliability_score ASC
+LIMIT 20;
+
+-- ==========================================
+-- 13. ANALYSE PAR CATÉGORIE DE PRODUIT (Fournisseurs)
+-- ==========================================
+
+SELECT 
+    product_category,
+    COUNT(DISTINCT supplier_id) AS supplier_count,
+    ROUND(AVG(lead_time), 1) AS avg_lead_time,
+    ROUND(AVG(reliability_score * 100), 2) AS avg_reliability,
+    SUM(CASE WHEN quality_rating = 'A' THEN 1 ELSE 0 END) AS grade_a_suppliers,
+    SUM(CASE WHEN quality_rating = 'C' THEN 1 ELSE 0 END) AS grade_c_suppliers
+FROM supplier_information_clean
+GROUP BY product_category
+ORDER BY avg_reliability DESC;
+
+-- ==========================================
+-- 14. CORRÉLATION STOCK VS DÉLAIS LIVRAISON
+-- ==========================================
+
+-- Identifier les produits à risque (stock faible + longs délais)
+WITH inventory_metrics AS (
+    SELECT 
+        i.product_category,
+        i.stock_status,
+        COUNT(*) AS product_count,
+        ROUND(AVG(i.lead_time), 1) AS avg_inventory_lead_time
+    FROM inventory_clean i
+    GROUP BY i.product_category, i.stock_status
+),
+shipping_metrics AS (
+    SELECT 
+        destination_region,
+        ROUND(AVG(estimated_delivery_days), 1) AS avg_shipping_days
+    FROM logistics_and_shipping_clean
+    GROUP BY destination_region
+)
+SELECT 
+    im.product_category,
+    im.stock_status,
+    im.product_count,
+    im.avg_inventory_lead_time
+FROM inventory_metrics im
+WHERE im.stock_status IN ('REORDER_NEEDED', 'LOW_STOCK')
+ORDER BY im.avg_inventory_lead_time DESC, im.product_count DESC;

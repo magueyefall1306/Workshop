@@ -57,10 +57,6 @@ Structure du fichier SQL principal :
 
 ## Guide d'exécution rapide
 
-### Prérequis
-- Compte Snowflake actif
-- Accès à : `https://app.snowflake.com/mwycfsc/ykb13542/`
-
 ### Étape 1 : connexion Snowflake
 
 1. Ouvrir Snowflake : https://app.snowflake.com/mwycfsc/ykb13542/
@@ -104,11 +100,9 @@ Structure du fichier SQL principal :
 -- Temps : 2-3 minutes
 
 -- 7. Exécuter ANALYSES (Phase 2)
--- (Au choix selon besoins)
 -- Temps : ~30 sec par analyse
 ```
 
-**Temps total estimé : 10-20 minutes**
 
 ### Étape 3 : vérification
 

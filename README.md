@@ -444,7 +444,7 @@ ALTER WAREHOUSE ANYCOMPANY_WH RESUME;
 
 **Contenu à envoyer** :
 1. Accès Snowflake :
-   - https://app.snowflake.com/mwycfsc/ykb13542/#/workspaces/ws/USER%24/PUBLIC/DEFAULT%24/Data-Driven%20Marketing%20Analytics.sql
+   - https://app.snowflake.com/ttvbrvk/mcb36863/#/workspaces/ws/USER%24/PUBLIC/DEFAULT%24/AnyCompany%20-%20Data-Driven%20marketing%20analytics.sql
    - THANDIE
    - t_dranecophy@stu-mba-esg.com
-   - MyCodexCodeESGstu357$
+   - TwiceTimestudentA65$

@@ -16,6 +16,23 @@ Analyse data-driven complète pour :
 3. Identifier les produits et segments à fort potentiel
 4. Augmenter la part de marché de 10 points
 
+
+## 🏗️ Architecture Data
+
+Le projet suit une architecture Analytics Engineering moderne :
+
+```text
+Amazon S3
+   ↓
+Snowflake Data Warehouse
+   ├── BRONZE (données brutes)
+   ├── SILVER (données nettoyées et harmonisées)
+   └── ANALYTICS (data product marketing)
+   ↓
+SQL Analyses / Machine Learning
+   ↓
+Dashboards Streamlit
+
 ## Structure du projet
 ```
 anycompany-marketing-analytics/

@@ -442,24 +442,9 @@ ALTER WAREHOUSE ANYCOMPANY_WH RESUME;
 - [Loading from S3](https://docs.snowflake.com/en/user-guide/data-load-s3.html)
 - [Best Practices](https://docs.snowflake.com/en/user-guide/ui-snowsight-best-practices.html)
 
-**Support :**
-- Créer une issue GitHub
-- Contacter l'équipe enseignante
-
-
-## Changelog
-
-**v1.0 - 09 Février 2026**
-- Phase 1 : Data Preparation (100%)
-- Phase 2 : 5 Analyses Business (100%)
-- Phase 3 : Data Product ANALYTICS (100%)
-- Documentation complète
-- Fichier SQL tout-en-un
-
 
 **Contenu à envoyer** :
-1. Lien GitHub du projet
-2. Accès Snowflake :
+1. Accès Snowflake :
    - https://app.snowflake.com/mwycfsc/ykb13542/#/workspaces/ws/USER%24/PUBLIC/DEFAULT%24/Data-Driven%20Marketing%20Analytics.sql
    - THANDIE
    - t_dranecophy@stu-mba-esg.com

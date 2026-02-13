@@ -1,4 +1,4 @@
-- ========================================
+-- ========================================
 -- ANYCOMPANY - ANALYSE DES TENDANCES DE VENTES
 -- Phase 2.2 : Analyses Exploratoires Descriptives
 -- ========================================
@@ -27,7 +27,7 @@ WHERE transaction_type = 'Sale';
 SELECT 
     transaction_type,
     COUNT(*) AS nombre_transactions,
-    ROUND(COUNT() * 100.0 / SUM(COUNT()) OVER(), 2) AS pourcentage,
+    ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 2) AS pourcentage,
     SUM(amount) AS montant_total,
     ROUND(AVG(amount), 2) AS montant_moyen
 FROM financial_transactions_clean
@@ -39,49 +39,71 @@ ORDER BY montant_total DESC;
 -- ========================================
 
 -- Ventes par année avec croissance YoY
+WITH ventes_annuelles AS (
+    SELECT
+        YEAR(transaction_date) AS transaction_year,
+        COUNT(*) AS nombre_ventes,
+        SUM(amount) AS total_ventes,
+        ROUND(AVG(amount), 2) AS panier_moyen
+    FROM financial_transactions_clean
+    WHERE transaction_type = 'Sale'
+    GROUP BY YEAR(transaction_date)
+)
 SELECT
-    year(transaction_date) AS transaction_year,
-    COUNT(*) AS nombre_ventes,
-    SUM(amount) AS total_ventes,
-    ROUND(AVG(amount), 2) AS panier_moyen,
-    LAG(SUM(amount)) OVER (ORDER BY transaction_year) AS ventes_annee_precedente,
+    transaction_year,
+    nombre_ventes,
+    total_ventes,
+    panier_moyen,
+    LAG(total_ventes) OVER (ORDER BY transaction_year) AS ventes_annee_precedente,
     ROUND(
-        (SUM(amount) - LAG(SUM(amount)) OVER (ORDER BY transaction_year)) * 100.0 / 
-        NULLIF(LAG(SUM(amount)) OVER (ORDER BY transaction_year), 0), 
-    2) AS croissance_yoy_pct
-FROM financial_transactions_clean
-WHERE transaction_type = 'Sale'
-GROUP BY transaction_year
+        (total_ventes - LAG(total_ventes) OVER (ORDER BY transaction_year)) * 100.0 / 
+        NULLIF(LAG(total_ventes) OVER (ORDER BY transaction_year), 0), 
+        2
+    ) AS croissance_yoy_pct
+FROM ventes_annuelles
 ORDER BY transaction_year DESC;
 
 -- Ventes par trimestre (3 dernières années)
-SELECT 
-year(transaction_date) AS transaction_year,
-    quarter (transaction_date) AS transaction_quarter,
-    COUNT(*) AS nombre_ventes,
-    SUM(amount) AS total_ventes,
-    ROUND(AVG(amount), 2) AS panier_moyen
-FROM financial_transactions_clean
-WHERE transaction_type = 'Sale'
-  AND transaction_year >= YEAR(CURRENT_DATE()) - 3
-GROUP BY transaction_year, transaction_quarter
+WITH ventes_trimestrielles AS (
+    SELECT 
+        YEAR(transaction_date) AS transaction_year,
+        QUARTER(transaction_date) AS transaction_quarter,
+        COUNT(*) AS nombre_ventes,
+        SUM(amount) AS total_ventes,
+        ROUND(AVG(amount), 2) AS panier_moyen
+    FROM financial_transactions_clean
+    WHERE transaction_type = 'Sale'
+      AND YEAR(transaction_date) >= YEAR(CURRENT_DATE()) - 3
+    GROUP BY YEAR(transaction_date), QUARTER(transaction_date)
+)
+SELECT *
+FROM ventes_trimestrielles
 ORDER BY transaction_year DESC, transaction_quarter;
 
 -- Ventes mensuelles (12 derniers mois) avec évolution MoM
-SELECT 
-    DATE_TRUNC('month', transaction_date) AS mois,
-    COUNT(*) AS nombre_ventes,
-    SUM(amount) AS total_ventes,
-    ROUND(AVG(amount), 2) AS panier_moyen,
-    LAG(SUM(amount)) OVER (ORDER BY DATE_TRUNC('month', transaction_date)) AS ventes_mois_precedent,
+WITH ventes_mensuelles AS (
+    SELECT 
+        DATE_TRUNC('month', transaction_date) AS mois,
+        COUNT(*) AS nombre_ventes,
+        SUM(amount) AS total_ventes,
+        ROUND(AVG(amount), 2) AS panier_moyen
+    FROM financial_transactions_clean
+    WHERE transaction_type = 'Sale'
+      AND transaction_date >= DATEADD(month, -12, CURRENT_DATE())
+    GROUP BY DATE_TRUNC('month', transaction_date)
+)
+SELECT
+    mois,
+    nombre_ventes,
+    total_ventes,
+    panier_moyen,
+    LAG(total_ventes) OVER (ORDER BY mois) AS ventes_mois_precedent,
     ROUND(
-        (SUM(amount) - LAG(SUM(amount)) OVER (ORDER BY DATE_TRUNC('month', transaction_date))) * 100.0 / 
-        NULLIF(LAG(SUM(amount)) OVER (ORDER BY DATE_TRUNC('month', transaction_date)), 0), 
-    2) AS croissance_mom_pct
-FROM financial_transactions_clean
-WHERE transaction_type = 'Sale'
-  AND transaction_date >= DATEADD(month, -12, CURRENT_DATE())
-GROUP BY DATE_TRUNC('month', transaction_date)
+        (total_ventes - LAG(total_ventes) OVER (ORDER BY mois)) * 100.0 / 
+        NULLIF(LAG(total_ventes) OVER (ORDER BY mois), 0), 
+        2
+    ) AS croissance_mom_pct
+FROM ventes_mensuelles
 ORDER BY mois DESC;
 
 -- ========================================
@@ -105,6 +127,7 @@ ORDER BY numero_mois;
 WITH ventes_mensuelles AS (
     SELECT 
         TO_CHAR(transaction_date, 'Month') AS mois,
+        MONTH(transaction_date) AS numero_mois,
         SUM(amount) AS total_ventes
     FROM financial_transactions_clean
     WHERE transaction_type = 'Sale'
@@ -161,19 +184,27 @@ ORDER BY total_ventes DESC
 LIMIT 10;
 
 -- Évolution régionale sur 3 ans
+WITH ventes_regionales AS (
+    SELECT 
+        region,
+        YEAR(transaction_date) AS transaction_year,
+        SUM(amount) AS total_ventes
+    FROM financial_transactions_clean
+    WHERE transaction_type = 'Sale'
+      AND YEAR(transaction_date) >= YEAR(CURRENT_DATE()) - 3
+    GROUP BY region, YEAR(transaction_date)
+)
 SELECT 
     region,
-year(transaction_date) AS transaction_year,
-    SUM(amount) AS total_ventes,
-    LAG(SUM(amount)) OVER (PARTITION BY region ORDER BY transaction_year) AS ventes_annee_precedente,
+    transaction_year,
+    total_ventes,
+    LAG(total_ventes) OVER (PARTITION BY region ORDER BY transaction_year) AS ventes_annee_precedente,
     ROUND(
-        (SUM(amount) - LAG(SUM(amount)) OVER (PARTITION BY region ORDER BY transaction_year)) * 100.0 / 
-        NULLIF(LAG(SUM(amount)) OVER (PARTITION BY region ORDER BY transaction_year), 0), 
-    2) AS croissance_yoy_pct
-FROM financial_transactions_clean
-WHERE transaction_type = 'Sale'
-  AND transaction_year >= YEAR(CURRENT_DATE()) - 3
-GROUP BY region, transaction_year
+        (total_ventes - LAG(total_ventes) OVER (PARTITION BY region ORDER BY transaction_year)) * 100.0 / 
+        NULLIF(LAG(total_ventes) OVER (PARTITION BY region ORDER BY transaction_year), 0), 
+        2
+    ) AS croissance_yoy_pct
+FROM ventes_regionales
 ORDER BY region, transaction_year DESC;
 
 -- ========================================
@@ -185,7 +216,7 @@ SELECT
     COUNT(*) AS nombre_transactions,
     SUM(amount) AS montant_total,
     ROUND(AVG(amount), 2) AS panier_moyen,
-    ROUND(COUNT() * 100.0 / SUM(COUNT()) OVER(), 2) AS pct_transactions,
+    ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 2) AS pct_transactions,
     ROUND(SUM(amount) * 100.0 / SUM(SUM(amount)) OVER(), 2) AS pct_ca
 FROM financial_transactions_clean
 WHERE transaction_type = 'Sale'
@@ -281,7 +312,8 @@ variations AS (
         ROUND(
             (total_ventes - LAG(total_ventes) OVER (ORDER BY mois)) * 100.0 / 
             NULLIF(LAG(total_ventes) OVER (ORDER BY mois), 0), 
-        2) AS variation_pct
+            2
+        ) AS variation_pct
     FROM ventes_mensuelles
 )
 SELECT 
@@ -322,3 +354,6 @@ SELECT
         ORDER BY total DESC 
         LIMIT 1
     )) AS meilleur_mois;
+
+-- Aperçu des campagnes marketing
+SELECT * FROM marketing_campaigns_clean;

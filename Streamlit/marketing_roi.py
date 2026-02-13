@@ -1,5 +1,5 @@
 """
-AnyCompany Food & Beverage - Marketing ROI Dashboard
+AnyCompany Food & Beverage - Marketing ROI dashboard
 Analyse de la performance et du ROI des campagnes marketing
 """
 
@@ -43,7 +43,7 @@ try:
     SNOWFLAKE_AVAILABLE = True
 except:
     SNOWFLAKE_AVAILABLE = False
-    st.warning("⚠️ Snowflake non configuré. Utilisation de données de démonstration.")
+    st.warning("Snowflake non configuré. Utilisation de données de démonstration.")
 
 # ========================================
 # DONNÉES DEMO
@@ -110,7 +110,7 @@ def get_demo_data(query_type):
 # TITRE
 # ========================================
 
-st.title("💼 Analyse ROI des Campagnes Marketing")
+st.title("Analyse ROI des Campagnes Marketing")
 
 st.markdown("""
 **Mission Critique** : Optimiser chaque euro investi avec un budget réduit de 30%
@@ -127,7 +127,7 @@ st.markdown("---")
 # KPIS GLOBAUX
 # ========================================
 
-st.header("📊 Vue d'Ensemble du Marketing")
+st.header("Vue d'ensemble du marketing")
 
 if SNOWFLAKE_AVAILABLE:
     marketing_kpi_query = """
@@ -149,28 +149,28 @@ col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     st.metric(
-        "💰 Budget Total",
+        "Budget Total",
         f"${marketing_kpis['TOTAL_BUDGET_SPENT'].iloc[0]:,.0f}",
         delta="Investissement marketing"
     )
 
 with col2:
     st.metric(
-        "👥 Reach Total",
+        "Reach Total",
         f"{marketing_kpis['TOTAL_REACH'].iloc[0]:,.0f}",
         delta="Personnes touchées"
     )
 
 with col3:
     st.metric(
-        "📈 Taux Conversion Moyen",
+        "Taux Conversion Moyen",
         f"{marketing_kpis['AVG_CONVERSION_RATE_PCT'].iloc[0]}%",
         delta="Performance globale"
     )
 
 with col4:
     st.metric(
-        "💵 CPA Moyen",
+        "CPA Moyen",
         f"${marketing_kpis['AVG_CPA'].iloc[0]:,.2f}",
         delta="Coût par acquisition"
     )
@@ -181,7 +181,7 @@ st.markdown("---")
 # PERFORMANCE PAR TYPE DE CAMPAGNE
 # ========================================
 
-st.header("📈 Performance par Type de Campagne")
+st.header("Performance par type de campagne")
 
 if SNOWFLAKE_AVAILABLE:
     campaign_type_query = """
@@ -238,7 +238,7 @@ campaign_types['EVALUATION'] = campaign_types['AVG_CONVERSION_RATE_PCT'].apply(
               '⭐⭐ À AMÉLIORER'
 )
 
-st.subheader("📋 Détails par Type de Campagne")
+st.subheader("Détails par type de campagne")
 st.dataframe(
     campaign_types.style.format({
         'NUMBER_OF_CAMPAIGNS': '{:.0f}',
@@ -257,12 +257,12 @@ st.markdown("---")
 # TOP & BOTTOM PERFORMERS
 # ========================================
 
-st.header("🏆 Meilleures et Moins Bonnes Campagnes")
+st.header("🏆 Meilleures et moins bonnes campagnes")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("✅ Top 10 Campagnes (Meilleur ROI)")
+    st.subheader("✅ Top 10 campagnes (Meilleur ROI)")
     
     if SNOWFLAKE_AVAILABLE:
         top_campaigns_query = """
@@ -291,10 +291,10 @@ with col1:
     )
 
 with col2:
-    st.subheader("⚠️ Campagnes à Optimiser")
+    st.subheader("⚠️ Campagnes à optimiser")
     
     bottom_campaigns = campaign_types.nlargest(5, 'AVG_CPA')[['CAMPAIGN_TYPE', 'AVG_CPA', 'AVG_CONVERSION_RATE_PCT']]
-    bottom_campaigns['PROBLÈME'] = '💰 CPA trop élevé'
+    bottom_campaigns['PROBLÈME'] = 'CPA trop élevé'
     
     st.dataframe(
         bottom_campaigns.style.format({
@@ -311,7 +311,7 @@ st.markdown("---")
 # PERFORMANCE PAR AUDIENCE
 # ========================================
 
-st.header("👥 Performance par Segment d'Audience")
+st.header("Performance par Segment d'Audience")
 
 if SNOWFLAKE_AVAILABLE:
     audience_query = """
@@ -368,9 +368,9 @@ st.plotly_chart(fig_audience, use_container_width=True)
 
 # Classification des audiences
 audiences['PRIORITE'] = audiences['AVG_CONVERSION_RATE_PCT'].apply(
-    lambda x: '🎯 PRIORITÉ MAXIMALE' if x >= 8.5 else 
-              '✅ PRIORITÉ ÉLEVÉE' if x >= 7.5 else 
-              '➡️ PRIORITÉ STANDARD'
+    lambda x: 'PRIORITÉ MAXIMALE' if x >= 8.5 else 
+              'PRIORITÉ ÉLEVÉE' if x >= 7.5 else 
+              'PRIORITÉ STANDARD'
 )
 
 st.dataframe(
@@ -388,7 +388,7 @@ st.markdown("---")
 # IMPACT DES CAMPAGNES SUR LES VENTES
 # ========================================
 
-st.header("💰 Impact des Campagnes sur les Ventes")
+st.header("Impact des campagnes sur les ventes")
 
 if SNOWFLAKE_AVAILABLE:
     sales_impact_query = """
@@ -456,7 +456,7 @@ st.markdown("---")
 # ALLOCATION BUDGÉTAIRE RECOMMANDÉE
 # ========================================
 
-st.header("📊 Allocation Budgétaire Optimale")
+st.header("Allocation Budgétaire Optimale")
 
 if SNOWFLAKE_AVAILABLE:
     allocation_query = """
@@ -492,7 +492,7 @@ st.dataframe(
 )
 
 # Visualisation de la réallocation
-st.subheader("🔄 Nouvelle Répartition Recommandée")
+st.subheader("Nouvelle Répartition Recommandée")
 
 recommended = allocation.copy()
 recommended['RECOMMENDED_PCT'] = recommended['CURRENT_PCT']
@@ -533,19 +533,19 @@ st.markdown("---")
 # RECOMMANDATIONS STRATÉGIQUES
 # ========================================
 
-st.header("💡 Recommandations Stratégiques")
+st.header("💡 Recommandations stratégiques")
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
     st.success("""
-    **🎯 Canaux à Intensifier**
+    **Canaux à Intensifier**
     
-    - 📧 **Email Marketing** (+30% budget)
+    - 📧 **Email marketing** (+30% budget)
       - Conversion : 8.2%
       - CPA : $86
     
-    - 📝 **Content Marketing** (+15% budget)
+    - **Content Marketing** (+15% budget)
       - Conversion : 7.8%
       - CPA : $96
     
@@ -554,29 +554,29 @@ with col1:
 
 with col2:
     st.info("""
-    **📊 Optimisations**
+    **Optimisations**
     
-    - ⬇️ Réduire Print (-40%)
-    - ⬇️ Réduire TV (-50%)
-    - 🎯 Tests A/B systématiques
-    - 🤖 Automation marketing
+    - Réduire Print (-40%)
+    - Réduire TV (-50%)
+    - Tests A/B systématiques
+    - Automation marketing
     
     **Économies** : -$2.5M de coûts
     """)
 
 with col3:
     st.warning("""
-    **⚠️ Points de Vigilance**
+    **⚠️ Points de vigilance**
     
-    - 💰 CPA >$150 = non rentable
-    - 👥 Seniors : 4.8% conversion
-    - 📉 ROI négatif sur certaines régions
+    - CPA >$150 = non rentable
+    - Seniors : 4.8% conversion
+    - ROI négatif sur certaines régions
     
     **Action** : Révision complète
     """)
 
 # Plan d'action détaillé
-st.subheader("🎯 Plan d'Action Marketing")
+st.subheader("Plan d'action marketing")
 
 action_plan = pd.DataFrame({
     'Action': [
@@ -618,7 +618,7 @@ st.dataframe(action_plan, use_container_width=True)
 st.markdown("---")
 
 # Impact financier projeté
-st.subheader("💰 Impact Financier Projeté (12 mois)")
+st.subheader("Impact Financier Projeté (12 mois)")
 
 col1, col2, col3 = st.columns(3)
 
@@ -631,7 +631,7 @@ with col2:
 with col3:
     st.metric("ROI Marketing", "3.0x → 4.8x", delta="+60%")
 
-st.success("✅ **Conclusion** : En réallouant intelligemment le budget vers les canaux digitaux, l'objectif de 32% de part de marché est atteignable avec un budget réduit de 14%.")
+st.success("**Conclusion** : En réallouant intelligemment le budget vers les canaux digitaux, l'objectif de 32% de part de marché est atteignable avec un budget réduit de 14%.")
 
 st.markdown("---")
 st.markdown(f"""

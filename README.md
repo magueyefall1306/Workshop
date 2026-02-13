@@ -1,4 +1,4 @@
-# Worshop# 🏢 AnyCompany Food & Beverage - Marketing Analytics
+# Worshop 🏢 AnyCompany Food & Beverage - Marketing Analytics
 
 ## Contexte business
 

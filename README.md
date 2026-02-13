@@ -445,6 +445,6 @@ ALTER WAREHOUSE ANYCOMPANY_WH RESUME;
 **Contenu à envoyer** :
 1. Accès Snowflake :
    - https://app.snowflake.com/ttvbrvk/mcb36863/#/workspaces/ws/USER%24/PUBLIC/DEFAULT%24/AnyCompany%20-%20Data-Driven%20marketing%20analytics.sql
-   - THANDIE
-   - t_dranecophy@stu-mba-esg.com
+   - User : THANDIE
+   - Adresse mail : thandielabosse@gmail.com
    - TwiceTimestudentA65$

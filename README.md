@@ -1,4 +1,4 @@
-# Worshop 🏢 AnyCompany Food & Beverage - Marketing Analytics
+# 🏢 Workshop - AnyCompany Food & Beverage - Marketing Analytics
 
 ## Contexte business
 

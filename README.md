@@ -1,14 +1,14 @@
 # Worshop# 🏢 AnyCompany Food & Beverage - Marketing Analytics
 
-## 📊 Contexte Business
+## Contexte business
 
 AnyCompany Food & Beverage fait face à une **crise majeure** :
-- 📉 **Baisse des ventes** sans précédent
-- 📊 **Part de marché** : 28% → 22% (en 8 mois)
-- 💰 **Budget marketing** réduit de 30%
-- 🎯 **Objectif** : Atteindre 32% de part de marché d'ici T4 2025
+- **Baisse des ventes** sans précédent
+- **Part de marché** : 28% → 22% (en 8 mois)
+- **Budget marketing** réduit de 30%
+- **Objectif** : Atteindre 32% de part de marché d'ici T4 2025
 
-## 🎯 Objectif du Projet
+## 🎯 Objectif du projet
 
 Analyse data-driven complète pour :
 1. Inverser la tendance à la baisse des ventes
@@ -16,7 +16,7 @@ Analyse data-driven complète pour :
 3. Identifier les produits et segments à fort potentiel
 4. Augmenter la part de marché de 10 points
 
-## 🗂️ Structure du Projet
+## Structure du projet
 ```
 anycompany-marketing-analytics/
 │
@@ -41,7 +41,17 @@ anycompany-marketing-analytics/
 └── business_insights.md         
 ```
 
-## 🚀 Utilisation
+## Branches du projet
+
+Le projet utilise deux branches principales :
+
+- **`main`** : Branche principale contenant les analyses, dashboards et modèles ML
+- **`Snowflake`** : Branche dédiée au chargement et nettoyage des données dans Snowflake
+  - Scripts de création des tables
+  - Processus ETL (Extract, Transform, Load)
+  - Nettoyage et transformation des données (BRONZE → SILVER → GOLD)
+    
+## Utilisation
 
 ### Étape 1 : Configuration Snowflake
 
@@ -56,7 +66,7 @@ anycompany-marketing-analytics/
 2. Se connecter à Snowflake
 3. Créer un nouveau Worksheet
 
-### Étape 2 : Charger les Données
+### Étape 2 : Charger les données
 
 Dans Snowflake Worksheet :
 ```sql
@@ -66,13 +76,13 @@ Dans Snowflake Worksheet :
 
 Attendre ~5 minutes que toutes les données soient chargées.
 
-### Étape 3 : Nettoyer les Données
+### Étape 3 : Nettoyer les données
 ```sql
 -- Exécuter le nettoyage
 @sql/clean_data.sql
 ```
 
-### Étape 4 : Analyses Business
+### Étape 4 : Analyses business
 
 Exécuter les analyses SQL dans l'ordre :
 
@@ -91,7 +101,7 @@ streamlit run streamlit/promotion_analysis.py
 streamlit run streamlit/marketing_roi.py
 ```
 
-## 📊 Données Sources
+## 📊 Données sources
 
 **Localisation** : S3 (s3://logbrain-datalake/datasets/food-beverage/)
 
@@ -110,33 +120,26 @@ streamlit run streamlit/marketing_roi.py
 
 **Période couverte** : 2010-2025
 
-## 📈 Insights Clés
+## 📈 Insights clés
 
 Voir le document [business_insights.md](./business_insights.md) pour :
-- ✅ Analyse détaillée des tendances
-- ✅ Impact des promotions (Lift +42%)
-- ✅ Performance marketing par canal
-- ✅ Segmentation clients (4 segments)
-- ✅ 10 recommandations prioritaires
-- ✅ Roadmap de mise en œuvre
+- Analyse détaillée des tendances
+- Impact des promotions (Lift +42%)
+- Performance marketing par canal
+- Segmentation clients (4 segments)
+- 10 recommandations prioritaires
+- Roadmap de mise en œuvre
 
-## 🛠️ Technologies Utilisées
+## Technologies utilisées
 
 - **Data Warehouse** : Snowflake
 - **Analyses** : SQL
 - **Visualisation** : Streamlit + Plotly
 - **Machine Learning** : Python (scikit-learn, pandas)
 
-## 👥 Équipe
+## Équipe
 
-- **Data Engineer** : Chargement et nettoyage
-- **Data Analyst** : Analyses SQL et insights
-- **Business Analyst** : Recommandations stratégiques
+- **Data Engineer** : Chargement et nettoyage (Magueye et Thandie)
+- **Data Analyst** : Analyses SQL et insights (Thandie, Magueye et Jephté)
+- **Business Analyst** : Recommandations stratégiques (Magueye et Jephté)
 
-## 📧 Contact
-
-Pour toute question : [votre-email]
-
-## 📄 Licence
-
-Projet académique - MBA ESG 2026

@@ -440,7 +440,6 @@ ALTER WAREHOUSE ANYCOMPANY_WH RESUME;
 **Documentation Snowflake :**
 - [SQL Reference](https://docs.snowflake.com/en/sql-reference-commands.html)
 - [Loading from S3](https://docs.snowflake.com/en/user-guide/data-load-s3.html)
-- [Best Practices](https://docs.snowflake.com/en/user-guide/ui-snowsight-best-practices.html)
 
 
 **Contenu à envoyer** :

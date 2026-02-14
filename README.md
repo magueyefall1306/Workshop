@@ -16,6 +16,7 @@ Analyse data-driven complète pour :
 3. Identifier les produits et segments à fort potentiel
 4. Augmenter la part de marché de 10 points
 
+## 🏗️ Architecture Data
 ```text
 Amazon S3
    ↓
